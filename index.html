@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老闆訂單管理系統</title>
+    <style>
+        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background: #ffffff; color: #333; margin: 0; padding: 20px; padding-bottom: 100px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; border-bottom: 2px solid #28a745; display: inline-block; width: 100%; padding-bottom: 10px; }
+
+        .order-card { 
+            background: #fff; border: 1px solid #eee; border-radius: 15px; 
+            padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); 
+            position: relative; overflow: hidden;
+        }
+
+        .order-header { 
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #f8f9fa; padding-bottom: 12px; margin-bottom: 15px; 
+        }
+
+        .table-info { display: flex; align-items: center; gap: 10px; }
+        .table-name { font-size: 26px; font-weight: bold; color: #d32f2f; }
+        
+        /* 狀態標籤樣式 */
+        .status-badge { 
+            padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold;
+            background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; 
+        }
+        .status-ready { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+
+        .order-time { font-size: 14px; color: #999; }
+
+        /* 點餐清單樣式 */
+        .category-row { margin-bottom: 15px; }
+        .cat-tag { font-weight: bold; color: #007bff; font-size: 20px; display: block; margin-bottom: 4px; }
+        .dish-list { font-size: 24px; font-weight: 600; color: #111; padding-left: 5px; line-height: 1.5; }
+
+        .footer-info { 
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ddd;
+        }
+        .total-price { font-size: 20px; font-weight: bold; color: #555; }
+
+        .confirm-btn {
+            width: 100%; margin-top: 20px; background: #28a745; color: white; 
+            border: none; padding: 15px; border-radius: 10px; font-size: 20px; 
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2);
+        }
+        .confirm-btn:active { transform: scale(0.98); background: #218838; }
+
+        .refresh-btn { 
+            position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px; 
+            border-radius: 50%; background: #2c3e50; color: white; border: none; 
+            font-size: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>👨‍🍳 廚房訂單看板</h2>
+    <div id="order-list">讀取中...</div>
+
+    <button class="refresh-btn" onclick="loadOrders()">🔄</button>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzxR4PDIfLlUPpwCAraPsK7qAbbXMU1uRMNw1fOfMSvau5jbkSdgjQQVx01c9_AvRB6/exec"; 
+
+    function loadOrders() {
+        const list = document.getElementById('order-list');
+        list.style.opacity = "0.5";
+
+        fetch(`${API_URL}?mode=getOrders`)
+            .then(res => res.json())
+            .then(data => {
+                list.style.opacity = "1";
+                list.innerHTML = "";
+                if (data.length === 0) {
+                    list.innerHTML = "<p style='text-align:center; color:#999; margin-top:50px; font-size:20px;'>目前沒有待處理訂單</p>";
+                    return;
+                }
+
+                data.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    
+                    // 根據狀態決定標籤顏色
+                    const statusClass = order.status === "待製作" ? "" : "status-ready";
+
+                    card.innerHTML = `
+                        <div class="order-header">
+                            <div class="table-info">
+                                <span class="table-name">${order.table}</span>
+                                <span class="status-badge ${statusClass}">${order.status}</span>
+                            </div>
+                            <span class="order-time">${order.time}</span>
+                        </div>
+                        <div class="order-body">${order.content}</div>
+                        <div class="footer-info">
+                            <span class="total-price">總計: $${order.total}</span>
+                        </div>
+                        <button class="confirm-btn" onclick="completeOrder('${order.row}')">✅ 完成出餐</button>
+                    `;
+                    list.appendChild(card);
+                });
+            })
+            .catch(err => { list.innerHTML = "讀取失敗，請檢查網路連結"; });
+    }
+
+    function completeOrder(rowNum) {
+        if(!confirm("確定已完成此訂單？")) return;
+        
+        fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "delete", row: rowNum })
+        })
+        .then(() => loadOrders())
+        .catch(() => alert("更新失敗"));
+    }
+
+    window.onload = loadOrders;
+    setInterval(loadOrders, 30000); // 30秒自動刷新一次
+</script>
+</body>
+</html>
